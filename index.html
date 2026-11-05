@@ -281,10 +281,16 @@ const STARTER=[
 ];
 const STARTER_SETS=[
   {name:"Media kit",items:["K05","K06","K07","K29"]},
-  {name:"Monitor kit",items:["K04","K30","K08"]},
+  {name:"Monitor kit",items:["K04","K30","K12","K08","K14"]},
   {name:"Thypoch lens kit",items:["K02","K03","K31","K21","K20","K32"]}
 ];
-let setsTried=false;
+let setsTried=false, sets2Tried=false;
+function maybeSets2(){
+  if(sets2Tried||!S.items.size||st().monitorKit2)return; sets2Tried=true;
+  const add=["K12","K14"].filter(id=>S.items.has(id));
+  const zs=(st().sets||[]).map(z=>z.name==="Monitor kit"?Object.assign({},z,{items:[...new Set((z.items||[]).concat(add))]}):Object.assign({},z,{items:(z.items||[]).filter(x=>!add.includes(x))}));
+  saveSettings({sets:zs,monitorKit2:true});
+}
 function maybeSets(){
   if(setsTried||!S.items.size||st().starterSets)return; setsTried=true;
   const s=st(); const have=new Set((s.sets||[]).map(z=>String(z.name).toLowerCase()));
@@ -310,6 +316,7 @@ function render(){
   compute();
   if(!starterTried&&S.items.size&&!st().starterPackages){setTimeout(maybeStarter,0)}
   else if(!setsTried&&S.items.size&&st().starterPackages&&!st().starterSets){setTimeout(maybeSets,0)}
+  else if(!sets2Tried&&S.items.size&&st().starterSets&&!st().monitorKit2){setTimeout(maybeSets2,0)}
   const v={overview:vOverview,kit:vKit,jobs:vJobs,repairs:vRepairs,settings:vSettings}[S.view]||vOverview;
   app.innerHTML=head()+v();
   if(S.view==="kit"){const q=$("#kitq");if(q){q.value=S.kitQ;q.addEventListener("input",()=>{S.kitQ=q.value;const l=$("#kitlist");if(l)l.innerHTML=kitList()})}}
