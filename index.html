@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kit Ledger</title>
+<meta name="theme-color" content="#0f1113" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f6" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kit Ledger">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: app shell, one column of content (max 760px), bottom tab bar on phones, top tab bar on wide screens; sheets slide up for editing */
+:root{
+  --bg:#f4f5f6; --surface:#ffffff; --sunk:#eceef0; --fg:#15171a; --muted:#646a73; --line:#e1e4e8;
+  --good:#16794c; --warn:#a15c07; --warn-soft:#fdf1df; --bad:#b42318;
+  --accent:#0f766e; --accent-soft:#e3f3f1; --on-accent:#ffffff;
+  --sans:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Geist Mono",ui-monospace,Menlo,monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1113; --surface:#181b1f; --sunk:#202429; --fg:#eceef1; --muted:#9097a1; --line:#2a2f35;
+  --good:#4cc38a; --warn:#f0b35a; --warn-soft:#2c2214; --bad:#f07a6e;
+  --accent:#3fc1b0; --accent-soft:#15302d; --on-accent:#08201d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1113; --surface:#181b1f; --sunk:#202429; --fg:#eceef1; --muted:#9097a1; --line:#2a2f35;
+  --good:#4cc38a; --warn:#f0b35a; --warn-soft:#2c2214; --bad:#f07a6e;
+  --accent:#3fc1b0; --accent-soft:#15302d; --on-accent:#08201d; color-scheme:dark}
+/* accent choices (light values; dark overrides below) */
+body[data-accent="blue"]{--accent:#2554c7;--accent-soft:#e7edfb}
+body[data-accent="orange"]{--accent:#c2410c;--accent-soft:#fcece3}
+body[data-accent="violet"]{--accent:#6d3fc9;--accent-soft:#efe8fb}
+body[data-accent="graphite"]{--accent:#2f3640;--accent-soft:#e6e8eb}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body[data-accent="blue"]{--accent:#7fa2f5;--accent-soft:#1a2440}
+:root:not([data-theme="light"]) body[data-accent="orange"]{--accent:#f39a63;--accent-soft:#33200f}
+:root:not([data-theme="light"]) body[data-accent="violet"]{--accent:#b49af5;--accent-soft:#261c3c}
+:root:not([data-theme="light"]) body[data-accent="graphite"]{--accent:#c9ced6;--accent-soft:#272b31}}
+:root[data-theme="dark"] body[data-accent="blue"]{--accent:#7fa2f5;--accent-soft:#1a2440}
+:root[data-theme="dark"] body[data-accent="orange"]{--accent:#f39a63;--accent-soft:#33200f}
+:root[data-theme="dark"] body[data-accent="violet"]{--accent:#b49af5;--accent-soft:#261c3c}
+:root[data-theme="dark"] body[data-accent="graphite"]{--accent:#c9ced6;--accent-soft:#272b31}
+
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+body{margin:0}
+.signin{max-width:380px;margin:12vh auto 0;padding:24px;display:grid;gap:14px}
+.signin h1{margin:0;font-size:22px}
+.err{color:var(--bad);font-size:13.5px;min-height:1em;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.app{max-width:760px;margin:0 auto;padding-block:16px 110px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em}
+.brand span{color:var(--muted);font-weight:500}
+h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:26px 0 10px}
+h2:first-child{margin-top:4px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.danger{color:var(--bad)}
+.btn:focus-visible,.row:focus-visible,.chip:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar{height:6px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.bar.done>i{background:var(--good)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 11px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.pill{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.mute{background:var(--sunk);color:var(--muted)}
+.pill.good{background:var(--accent-soft);color:var(--good)}
+.muted{color:var(--muted)}
+
+/* hero */
+.hero{padding:20px;display:grid;gap:14px}
+.hero .big{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.hero .of{color:var(--muted);font-size:15px}
+.hero .bar{height:10px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border-top:1px solid var(--line);margin:0 -20px -20px;border-radius:0 0 var(--r) var(--r);overflow:hidden}
+.stat{background:var(--surface);padding:12px 14px;min-width:0}
+.stat b{display:block;font-family:var(--mono);font-size:16px;font-weight:600}
+.stat span{font-size:12px;color:var(--muted)}
+.notice{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;background:var(--warn-soft);color:var(--warn);border-radius:10px;margin-top:12px;font-weight:500;cursor:pointer;border:0;width:100%;text-align:left}
+
+/* lists */
+.list{display:grid}
+.list>.row+.row{border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;padding:12px 14px;align-items:center;cursor:pointer;background:transparent;border:0;width:100%;text-align:left}
+.row:hover{background:var(--sunk)}
+.row .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .m{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row .r{text-align:right;font-family:var(--mono);font-size:14px}
+.row .r small{display:block;font-size:12px;color:var(--muted)}
+.row .bar{grid-column:1/-1;height:4px;margin-top:4px}
+.grp{display:flex;justify-content:space-between;align-items:baseline;padding:10px 14px 8px;background:var(--sunk);font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.list>.grp{border-top:1px solid var(--line)}
+.list>.grp:first-child{border-top:0;border-radius:var(--r) var(--r) 0 0}
+.cat-row{display:grid;grid-template-columns:84px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 14px;font-size:14px}
+.cat-row+.cat-row{border-top:1px solid var(--line)}
+.cat-row .num{text-align:right;font-size:13px;white-space:nowrap}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--fg);margin-bottom:4px}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.search{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px}
+
+/* tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.tab{background:none;border:0;padding:9px 4px 8px;display:grid;justify-items:center;gap:3px;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7}
+.tab[aria-current="page"]{color:var(--accent)}
+@media (min-width:820px){
+  nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);bottom:auto;max-width:760px;margin:0 auto 18px;border:1px solid var(--line);border-radius:12px;grid-template-columns:repeat(5,auto);justify-content:start;gap:2px;padding:4px}
+  .tab{grid-auto-flow:column;gap:7px;font-size:14px;padding:8px 14px;border-radius:9px}
+  .tab svg{width:18px;height:18px}
+  .tab[aria-current="page"]{background:var(--accent-soft)}
+  .app{padding-bottom:48px}
+  .navwrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:16px}
+}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,12,14,.45);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:600px;max-height:92%;border-radius:16px 16px 0 0;display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+@media (min-width:820px){.scrim{align-items:center}.sheet{border-radius:16px;max-height:88%}}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.sheet-h b{font-size:16px}
+.sheet-b{overflow-y:auto;padding:16px;display:grid;gap:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet-f{display:flex;gap:8px;justify-content:space-between;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.field{display:grid;gap:5px;min-width:0}
+.field label{font-size:12.5px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:10px 11px;min-width:0}
+.field textarea{min-height:64px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media (max-width:420px){.three{grid-template-columns:1fr 1fr}}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kv div{background:var(--surface);padding:10px 12px}
+.kv span{display:block;font-size:12px;color:var(--muted)}
+.kv b{font-family:var(--mono);font-weight:600}
+.toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500}
+.toggle input{width:20px;height:20px;accent-color:var(--accent)}
+.pick{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.pick-g{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--sunk);font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.pick-g button{background:none;border:0;color:var(--accent);font-weight:600;font-size:12.5px;cursor:pointer;text-transform:none;letter-spacing:0}
+.pick label{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line);cursor:pointer}
+.pick label input{width:18px;height:18px;accent-color:var(--accent)}
+.pick label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick label small{font-family:var(--mono);color:var(--muted);font-size:12.5px}
+.pick label.on{background:var(--accent-soft)}
+.summary{display:flex;justify-content:space-between;gap:10px;padding:11px 12px;background:var(--accent-soft);border-radius:10px;font-size:14px}
+.split{font-size:13px;display:grid;gap:4px;max-height:160px;overflow:auto}
+.split div{display:flex;justify-content:space-between;gap:10px}
+.split span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
+.sw[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 3px var(--surface)}
+.set-row{display:flex;gap:8px;align-items:center;padding:8px 12px}
+.set-row+.set-row{border-top:1px solid var(--line)}
+.set-row input{flex:1;min-width:0;border:1px solid transparent;background:transparent;border-radius:8px;padding:7px 8px}
+.set-row input:hover,.set-row input:focus{border-color:var(--line);background:var(--bg)}
+.set-row small{color:var(--muted);font-size:12px;white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:8px 13px;cursor:pointer;font-weight:500;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:99px;font-weight:600;font-size:14px;z-index:60;pointer-events:none}
+@media (min-width:820px){.toast{bottom:28px}}
+.state{padding:40px 20px;text-align:center;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+</head>
+<body>
+
+<div class="navwrap"><nav class="tabs" id="tabs" aria-label="Sections"></nav></div>
+<main class="app" id="app">
+  <header class="top"><div class="brand">Kit Ledger <span>· payback tracker</span></div></header>
+  <div class="state" id="boot">Loading your kit…</div>
+</main>
+<div id="layer"></div>
+<input type="file" id="importfile" accept=".json,application/json" hidden>
+
+<script type="module">
+import CONFIG from "./config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+"use strict";
+const DEF={categories:["Camera","Lenses","Filters","Monitor","Media","Power","Cables","Rigging","Cases","Other"],packages:[],split:"cost",accent:"teal"};
+const STATUSES=["Owned","Check","Sold","Stolen","Returned"];
+const COUNTED=["Owned","Sold","Stolen"];
+const S={db:null,items:new Map(),jobs:new Map(),repairs:new Map(),settings:null,ready:{items:false,jobs:false,repairs:false,settings:false},view:"overview",kitFilter:"All",kitQ:"",canWrite:true};
+let C=null; // computed
+
+const $=(s,el=document)=>el.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const n=v=>{const x=parseFloat(v);return isFinite(x)?x:0};
+const gbp=(v,dp=0)=>{const s=Math.abs(v).toLocaleString("en-GB",{minimumFractionDigits:dp,maximumFractionDigits:dp});return (v<0?"-":"")+"£"+s};
+const pct=v=>Math.round(v*100)+"%";
+const fmtDate=d=>{if(!d)return"";const t=new Date(d+"T00:00:00");return isNaN(t)?d:t.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"2-digit"})};
+const today=()=>new Date().toISOString().slice(0,10);
+function st(){return Object.assign({},DEF,S.settings||{})}
+
+/* ---------- maths ---------- */
+function compute(){
+  const set=st(); const it={};
+  for(const [id,d] of S.items) it[id]=Object.assign({id},d,{cost:n(d.cost),soldFor:n(d.soldFor),rental:0,times:0,rep:0});
+  for(const [,r] of S.repairs){ if(it[r.itemId]) it[r.itemId].rep+=n(r.cost); }
+  const jobs=[...S.jobs].map(([id,j])=>Object.assign({id},j,{fee:n(j.fee)})).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  for(const j of jobs){
+    const ids=(j.items||[]).filter(x=>it[x]&&it[x].status!=="Returned");
+    j.valid=ids; j.shares={};
+    ids.forEach(x=>it[x].times++);
+    if(!ids.length||!j.fee) continue;
+    const tot=ids.reduce((a,x)=>a+it[x].cost,0);
+    const eq=set.split==="equal"||tot<=0;
+    for(const x of ids){const s=eq?j.fee/ids.length:j.fee*it[x].cost/tot; it[x].rental+=s; j.shares[x]=s;}
+  }
+  const T={spent:0,repairs:0,rental:0,sales:0,back:0,owned:0,owed:0,check:0,jobs:jobs.length,cats:{}};
+  for(const x of Object.values(it)){
+    x.total=x.cost+x.rep;
+    x.sale=(x.status==="Sold"||x.status==="Stolen")?x.soldFor:0;
+    x.back=x.rental+x.sale; x.net=x.back-x.total; x.pct=x.total>0?x.back/x.total:0;
+    x.counted=COUNTED.includes(x.status);
+    if(x.status==="Check")T.check++;
+    if(x.status==="Owned")T.owned+=x.cost;
+    if(x.counted){
+      T.spent+=x.total;T.repairs+=x.rep;T.sales+=x.sale;T.back+=x.back;
+      const c=x.category||"Other"; const k=T.cats[c]||(T.cats[c]={total:0,back:0}); k.total+=x.total;k.back+=x.back;
+    }
+  }
+  T.rental=jobs.reduce((a,j)=>a+j.fee,0);
+  T.owed=jobs.filter(j=>j.paid===false).reduce((a,j)=>a+j.fee,0);
+  T.pct=T.spent>0?T.back/T.spent:0;
+  C={it,jobs,T};
+}
+function itemsSorted(){return Object.values(C.it).sort((a,b)=>(a.code||"").localeCompare(b.code||"",undefined,{numeric:true}))}
+function nextCode(){let m=0;for(const [,d] of S.items){const k=parseInt(String(d.code||"").replace(/\D/g,""),10);if(k>m)m=k}return "K"+String(m+1).padStart(2,"0")}
+
+/* ---------- shell ---------- */
+const ICONS={
+ overview:'<path d="M4 13h4v7H4zM10 8h4v12h-4zM16 4h4v16h-4z"/>',
+ kit:'<rect x="3" y="7" width="14" height="10" rx="2"/><path d="M17 10l4-2v8l-4-2"/>',
+ jobs:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+ repairs:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.4 2.4-2.6-.6-.6-2.6z"/>',
+ settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'
+};
+const NAMES={overview:"Overview",kit:"Kit",jobs:"Jobs",repairs:"Repairs",settings:"Settings"};
+function renderTabs(){
+  $("#tabs").innerHTML=Object.keys(NAMES).map(k=>`<button class="tab" data-tab="${k}" ${S.view===k?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${NAMES[k]}</button>`).join("");
+}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-tab]");if(t){S.view=t.dataset.tab;try{localStorage.setItem("kl-view",S.view)}catch(_){}render();window.scrollTo(0,0)}});
+
+function render(){
+  document.body.dataset.accent=st().accent||"teal";
+  renderTabs();
+  const app=$("#app");
+  if(!S.db){return}
+  if(!Object.values(S.ready).every(Boolean)){app.innerHTML=head()+`<div class="state">Loading your kit…</div>`;return}
+  compute();
+  const v={overview:vOverview,kit:vKit,jobs:vJobs,repairs:vRepairs,settings:vSettings}[S.view]||vOverview;
+  app.innerHTML=head()+v();
+  if(S.view==="kit"){const q=$("#kitq");if(q){q.value=S.kitQ;q.addEventListener("input",()=>{S.kitQ=q.value;const l=$("#kitlist");if(l)l.innerHTML=kitList()})}}
+}
+function head(){
+  const act=S.view==="kit"?`<button class="btn" data-act="new-item">+ Item</button>`:S.view==="repairs"?`<button class="btn" data-act="new-repair">+ Repair</button>`:S.view==="settings"?"":`<button class="btn primary" data-act="new-job">+ Log job</button>`;
+  return `<header class="top"><div class="brand">Kit Ledger <span>· ${NAMES[S.view]}</span></div>${S.canWrite?act:""}</header>`;
+}
+
+/* ---------- views ---------- */
+function vOverview(){
+  const T=C.T; const ahead=T.back-T.spent;
+  const items=itemsSorted();
+  if(!items.length) return `<div class="card empty"><b>No kit yet</b>Import your backup file to bring your kit across, or add your first item on the Kit tab.<div style="margin-top:14px"><button class="btn primary" data-act="import">Import backup…</button></div></div>`;
+  const cats=st().categories.filter(c=>C.T.cats[c]).concat(Object.keys(C.T.cats).filter(c=>!st().categories.includes(c)));
+  const close=items.filter(x=>x.status==="Owned"&&x.pct<1&&x.back>0).sort((a,b)=>b.pct-a.pct).slice(0,5);
+  const paid=items.filter(x=>x.counted&&x.pct>=1);
+  return `
+  <section class="card hero">
+    <div><div class="big num">${gbp(T.back)}</div><div class="of">paid back of <span class="num">${gbp(T.spent)}</span> spent on kit · <b>${pct(T.pct)}</b></div></div>
+    <div class="bar ${T.pct>=1?"done":""}"><i style="width:${Math.min(100,T.pct*100)}%"></i></div>
+    <div class="stats">
+      <div class="stat"><b>${gbp(Math.abs(ahead))}</b><span>${ahead>=0?"Profit":"Still to recoup"}</span></div>
+      <div class="stat"><b>${gbp(T.owed)}</b><span>Owed to you</span></div>
+      <div class="stat"><b>${T.jobs}</b><span>Jobs logged</span></div>
+    </div>
+  </section>
+  ${T.check?`<button class="notice" data-act="show-check"><span>${T.check} item${T.check>1?"s":""} to check: do you still have ${T.check>1?"them":"it"}?</span><span>View →</span></button>`:""}
+  <h2>By category</h2>
+  <div class="card">${cats.map(c=>{const k=C.T.cats[c];const p=k.total>0?k.back/k.total:0;return `<div class="cat-row"><span>${esc(c)}</span><div class="bar ${p>=1?"done":""}"><i style="width:${Math.min(100,p*100)}%"></i></div><span class="num">${gbp(k.back)} / ${gbp(k.total)}</span></div>`}).join("")}</div>
+  <h2>Closest to paid off</h2>
+  ${close.length?`<div class="card list">${close.map(itemRow).join("")}</div>`:`<div class="card empty">${paid.length?"Everything with income is paid off.":"Log a job and the items that earn first show up here."}</div>`}
+  <h2>Recent jobs</h2>
+  ${C.jobs.length?`<div class="card list">${C.jobs.slice(0,4).map(jobRow).join("")}</div>`:`<div class="card empty"><b>No jobs yet</b>Tap <b>Log job</b> after a shoot, tick the kit that went out, and the fee is shared across it.</div>`}
+  <p class="muted" style="font-size:12.5px;margin-top:22px">Totals include items you own, sold or had stolen (sale prices and payouts count as money back). Items marked Check or Returned are left out.</p>`;
+}
+function itemRow(x){
+  const chip=x.status!=="Owned"?`<span class="pill ${x.status==="Check"?"warn":"mute"}">${esc(x.status)}</span>`:"";
+  return `<button class="row" data-act="edit-item" data-id="${esc(x.id)}">
+    <div><div class="t">${esc(x.name)}</div><div class="m"><span class="mono">${esc(x.code||"")}</span>${chip}${x.times?`<span>${x.times} job${x.times>1?"s":""}</span>`:""}</div></div>
+    <div class="r">${gbp(x.total)}<small>${x.back>0?pct(x.pct)+" back":"—"}</small></div>
+    ${x.counted||x.status==="Check"?`<div class="bar ${x.pct>=1?"done":""}"><i style="width:${Math.min(100,x.pct*100)}%"></i></div>`:""}
+  </button>`;
+}
+function jobRow(j){
+  return `<button class="row" data-act="edit-job" data-id="${esc(j.id)}">
+    <div><div class="t">${esc(j.client||"Untitled job")}</div><div class="m"><span>${fmtDate(j.date)}</span><span>${(j.items||[]).length} item${(j.items||[]).length===1?"":"s"}</span>${j.paid===false?'<span class="pill warn">Owed</span>':""}</div></div>
+    <div class="r">${gbp(j.fee)}${n(j.days)>1?`<small>${n(j.days)} days</small>`:""}</div>
+  </button>`;
+}
+function vKit(){
+  const f=["All","Owned","Check","Sold","Stolen","Returned"];
+  return `<div class="toolbar"><input class="search" id="kitq" type="search" placeholder="Search kit, serials, suppliers" aria-label="Search kit"></div>
+  <div class="chips" style="margin-bottom:12px">${f.map(x=>`<button class="chip" data-act="kitf" data-f="${x}" aria-pressed="${S.kitFilter===x}">${x}</button>`).join("")}</div>
+  <div class="card list" id="kitlist">${kitList()}</div>`;
+}
+function kitList(){
+  const q=S.kitQ.trim().toLowerCase();
+  let xs=itemsSorted().filter(x=>S.kitFilter==="All"?true:x.status===S.kitFilter);
+  if(q) xs=xs.filter(x=>[x.name,x.code,x.serial,x.supplier,x.category,x.notes].join(" ").toLowerCase().includes(q));
+  if(!xs.length) return `<div class="empty">${S.items.size?"Nothing matches.":"<b>No kit yet</b>Tap <b>+ Item</b> to add your first piece."}</div>`;
+  const cats=st().categories.slice(); xs.forEach(x=>{if(!cats.includes(x.category||"Other"))cats.push(x.category||"Other")});
+  return cats.map(c=>{const g=xs.filter(x=>(x.category||"Other")===c);if(!g.length)return"";const tot=g.reduce((a,x)=>a+x.total,0);
+    return `<div class="grp"><span>${esc(c)}</span><span class="num">${gbp(tot)}</span></div>${g.map(itemRow).join("")}`}).join("");
+}
+function vJobs(){
+  if(!C.jobs.length) return `<div class="card empty"><b>No jobs yet</b>After a shoot, tap <b>Log job</b>: enter the kit fee, tick what went out, and each item's payback updates.</div>`;
+  const owed=C.T.owed;
+  return `${owed?`<div class="summary" style="background:var(--warn-soft);color:var(--warn);margin-bottom:12px"><span>Owed to you</span><b class="num">${gbp(owed)}</b></div>`:""}
+  <div class="card list">${C.jobs.map(jobRow).join("")}</div>
+  <p class="muted" style="font-size:12.5px;margin-top:14px">Total kit income <span class="num">${gbp(C.T.rental)}</span> across ${C.jobs.length} job${C.jobs.length>1?"s":""}.</p>`;
+}
+function vRepairs(){
+  const rs=[...S.repairs].map(([id,r])=>Object.assign({id},r)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  if(!rs.length) return `<div class="card empty"><b>No repairs logged</b>Services, sensor cleans, recalibrations and replacement parts go here. They add to that item's total cost.</div>`;
+  return `<div class="card list">${rs.map(r=>{const x=C.it[r.itemId];return `<button class="row" data-act="edit-repair" data-id="${esc(r.id)}"><div><div class="t">${esc(r.work||"Repair")}</div><div class="m"><span>${fmtDate(r.date)}</span><span>${esc(x?x.name:"Deleted item")}</span>${r.by?`<span>${esc(r.by)}</span>`:""}</div></div><div class="r">${gbp(n(r.cost),2)}</div></button>`}).join("")}</div>
+  <p class="muted" style="font-size:12.5px;margin-top:14px">Total <span class="num">${gbp(C.T.repairs,2)}</span> on items you own or owned.</p>`;
+}
+function vSettings(){
+  const s=st();
+  const used=c=>Object.values(C.it).filter(x=>x.category===c).length;
+  return `
+  <h2>Categories</h2>
+  <div class="card">${s.categories.map((c,i)=>`<div class="set-row"><input id="cat-${i}" value="${esc(c)}" data-act="cat-name" data-i="${i}" aria-label="Category name"><small>${used(c)} item${used(c)===1?"":"s"}</small>${used(c)?"":`<button class="btn ghost danger" data-act="cat-del" data-i="${i}" aria-label="Remove ${esc(c)}">Remove</button>`}</div>`).join("")}
+    <div class="set-row"><input id="cat-new" placeholder="New category" aria-label="New category"><button class="btn" data-act="cat-add">Add</button></div></div>
+  <p class="muted" style="font-size:12.5px">Renaming a category moves its items with it. Only empty categories can be removed.</p>
+  <h2>Kit packages</h2>
+  <div class="card">${s.packages.length?s.packages.map((p,i)=>`<div class="set-row"><input id="pkg-${i}" value="${esc(p.name)}" data-act="pkg-name" data-i="${i}" aria-label="Package name"><small>${(p.items||[]).length} items</small><button class="btn ghost" data-act="pkg-edit" data-i="${i}">Edit items</button><button class="btn ghost danger" data-act="pkg-del" data-i="${i}">Delete</button></div>`).join(""):`<div class="empty" style="padding:18px">Save a set of kit you often send out together (say, your PYXIS package) from the <b>Log job</b> screen. It becomes a one-tap selection.</div>`}
+    <div class="set-row"><button class="btn" data-act="pkg-new">+ New package</button></div></div>
+  <h2>How fees are shared</h2>
+  <div class="card" style="padding:14px;display:grid;gap:10px">
+    <div class="seg" role="group" aria-label="Fee split"><button data-act="split" data-v="cost" aria-pressed="${s.split!=="equal"}">By item cost</button><button data-act="split" data-v="equal" aria-pressed="${s.split==="equal"}">Equally</button></div>
+    <p class="muted" style="margin:0;font-size:13.5px">${s.split==="equal"?"Each ticked item gets the same share of the kit fee.":"Each ticked item gets a share in proportion to what it cost you, so on a £550 job the camera earns far more than a cable."} Changing this recalculates every job.</p>
+  </div>
+  <h2>Accent colour</h2>
+  <div class="card" style="padding:14px"><div class="swatches">${[["teal","#0f766e"],["blue","#2554c7"],["orange","#c2410c"],["violet","#6d3fc9"],["graphite","#2f3640"]].map(([k,c])=>`<button class="sw" style="background:${c}" data-act="accent" data-v="${k}" aria-pressed="${(s.accent||"teal")===k}" aria-label="${k}"></button>`).join("")}</div></div>
+  <h2>Your data</h2>
+  <div class="card" style="padding:14px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" data-act="export-kit">Kit register (.csv)</button><button class="btn" data-act="export-jobs">Jobs (.csv)</button><button class="btn" data-act="backup">Full backup (.json)</button><button class="btn" data-act="import">Import backup…</button>
+  </div>
+  <p class="muted" style="font-size:12.5px">CSV files open in Numbers, Google Sheets or anything else, for your accountant or an insurance schedule. A full backup can be imported again later; importing adds to or replaces items with the same ID.</p>
+  <h2>Account</h2>
+  <div class="card" style="padding:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span class="muted" style="min-width:0;overflow-wrap:anywhere">Signed in as ${esc(FB.email||"")}</span><button class="btn" data-act="signout">Sign out</button></div>`;
+}
+
+/* ---------- sheets ---------- */
+let SH=null;
+function openSheet(title,body,foot,onMount){
+  $("#layer").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="sheet-h"><b>${esc(title)}</b><button class="btn ghost" data-act="close" aria-label="Close">Close</button></div><div class="sheet-b">${body}</div><div class="sheet-f">${foot}</div></div></div>`;
+  SH=SH||{};
+  $("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
+  onMount&&onMount();
+  const f=$(".sheet-b input,.sheet-b select");f&&window.matchMedia("(min-width:820px)").matches&&f.focus();
+}
+function closeSheet(){$("#layer").innerHTML="";SH=null;render()}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&SH)closeSheet()});
+function toast(t){const d=document.createElement("div");d.className="toast";d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),1800)}
+function fail(e){toast(e&&e.code==="quota_exceeded"?"Storage is full, so delete something first":"Couldn't save. Check your connection and try again")}
+const val=id=>{const el=document.getElementById(id);return el?el.value:""};
+function delBtn(act,id){return `<button class="btn ghost danger" data-act="${act}" data-id="${esc(id)}" data-armed="0">Delete</button>`}
+function arm(btn){if(btn.dataset.armed==="1")return true;btn.dataset.armed="1";btn.textContent="Tap again to delete";setTimeout(()=>{if(btn.isConnected){btn.dataset.armed="0";btn.textContent="Delete"}},3000);return false}
+
+function itemSheet(id){
+  const isNew=!id; const d=isNew?{code:nextCode(),status:"Owned",category:st().categories[0],purchased:today()}:S.items.get(id);
+  const x=isNew?null:C.it[id];
+  const cats=st().categories.slice(); if(d.category&&!cats.includes(d.category))cats.push(d.category);
+  const reps=isNew?[]:[...S.repairs].map(([rid,r])=>Object.assign({id:rid},r)).filter(r=>r.itemId===id);
+  const jobsFor=isNew?[]:C.jobs.filter(j=>j.shares[id]!==undefined||(j.valid||[]).includes(id));
+  const body=`
+    <div class="field"><label for="i-name">Item</label><input id="i-name" value="${esc(d.name)}" placeholder="e.g. Tilta Nucleus-M motor"></div>
+    <div class="two"><div class="field"><label for="i-cat">Category</label><select id="i-cat">${cats.map(c=>`<option ${c===d.category?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+      <div class="field"><label for="i-status">Status</label><select id="i-status">${STATUSES.map(s=>`<option ${s===d.status?"selected":""}>${s}</option>`).join("")}</select></div></div>
+    <div class="two"><div class="field"><label for="i-cost">Cost (£)</label><input id="i-cost" inputmode="decimal" value="${d.cost??""}" placeholder="0.00"></div>
+      <div class="field"><label for="i-date">Purchased</label><input id="i-date" type="date" value="${esc(d.purchased||"")}"></div></div>
+    <div class="two" id="i-sold" ${d.status==="Sold"||d.status==="Stolen"?"":"hidden"}><div class="field"><label for="i-soldfor">Sold for / payout (£)</label><input id="i-soldfor" inputmode="decimal" value="${n(d.soldFor)||""}" placeholder="0.00"></div>
+      <div class="field"><label for="i-solddate">Date</label><input id="i-solddate" type="date" value="${esc(d.soldDate||"")}"></div></div>
+    <div class="two"><div class="field"><label for="i-serial">Serial no.</label><input id="i-serial" value="${esc(d.serial)}"></div>
+      <div class="field"><label for="i-sup">Supplier</label><input id="i-sup" value="${esc(d.supplier)}"></div></div>
+    <div class="two"><div class="field"><label for="i-code">ID</label><input id="i-code" value="${esc(d.code)}"></div><div></div></div>
+    <div class="field"><label for="i-notes">Notes</label><textarea id="i-notes">${esc(d.notes)}</textarea></div>
+    ${x?`<div class="kv"><div><span>Total cost</span><b>${gbp(x.total,2)}</b></div><div><span>Money back</span><b>${gbp(x.back,2)}</b></div><div><span>Rental income</span><b>${gbp(x.rental,2)}</b></div><div><span>${x.net>=0?"Profit":"Still to recoup"}</span><b style="color:${x.net>=0?"var(--good)":"var(--fg)"}">${gbp(Math.abs(x.net),2)}</b></div></div>
+      ${jobsFor.length?`<div class="field"><label>Jobs</label><div class="split">${jobsFor.map(j=>`<div><span>${fmtDate(j.date)} · ${esc(j.client||"Job")}</span><span class="num">${gbp(j.shares[id]||0,2)}</span></div>`).join("")}</div></div>`:""}
+      ${reps.length?`<div class="field"><label>Repairs</label><div class="split">${reps.map(r=>`<div><span>${fmtDate(r.date)} · ${esc(r.work||"Repair")}</span><span class="num">${gbp(n(r.cost),2)}</span></div>`).join("")}</div></div>`:""}`:""}`;
+  const foot=`${isNew?"<span></span>":delBtn("del-item",id)}<button class="btn primary" data-act="save-item" data-id="${esc(id||"")}">${isNew?"Add item":"Save"}</button>`;
+  openSheet(isNew?"New item":d.name||"Item",body,foot,()=>{$("#i-status").addEventListener("change",e=>{$("#i-sold").hidden=!(e.target.value==="Sold"||e.target.value==="Stolen")})});
+}
+async function saveItem(id){
+  const name=val("i-name").trim(); if(!name){toast("Give the item a name");return}
+  const old=id?S.items.get(id):{};
+  const d=Object.assign({},old,{name,category:val("i-cat"),status:val("i-status"),cost:Math.round(n(val("i-cost"))*100)/100,purchased:val("i-date"),serial:val("i-serial").trim(),supplier:val("i-sup").trim(),code:val("i-code").trim()||nextCode(),notes:val("i-notes").trim(),soldFor:Math.round(n(val("i-soldfor"))*100)/100,soldDate:val("i-solddate")});
+  try{ if(id) await S.db.collection("items").doc(id).set(d); else await S.db.collection("items").add(d); closeSheet(); toast(id?"Saved":"Item added"); }catch(e){fail(e)}
+}
+
+function jobSheet(id,preset){
+  const isNew=!id; const d=isNew?{date:today(),days:1,paid:true,items:preset||[]}:S.jobs.get(id);
+  SH={sel:new Set(d.items||[])};
+  const body=`
+    <div class="field"><label for="j-client">Job / client</label><input id="j-client" value="${esc(d.client)}" placeholder="e.g. DEPT – sneaker spot"></div>
+    <div class="three"><div class="field"><label for="j-date">Date</label><input id="j-date" type="date" value="${esc(d.date||"")}"></div>
+      <div class="field"><label for="j-days">Days</label><input id="j-days" inputmode="numeric" value="${esc(d.days??1)}"></div>
+      <div class="field"><label for="j-fee">Kit fee (£)</label><input id="j-fee" inputmode="decimal" value="${d.fee??""}" placeholder="550"></div></div>
+    <label class="toggle"><input type="checkbox" id="j-paid" ${d.paid===false?"":"checked"}> Paid</label>
+    <div class="field"><label>What went out</label>
+      ${st().packages.length?`<div class="chips" id="j-pkgs">${st().packages.map((p,i)=>`<button class="chip" data-act="pkg-apply" data-i="${i}">${esc(p.name)}</button>`).join("")}</div>`:""}
+      <input class="search" id="j-q" type="search" placeholder="Filter kit" aria-label="Filter kit">
+      <div class="pick" id="j-pick"></div></div>
+    <div id="j-sum"></div>
+    <div class="set-row" style="padding:0" id="j-savepkg"><button class="btn ghost" data-act="pkg-from-job">Save ticked items as a package</button></div>
+    <p class="muted" style="font-size:12.5px;margin:0">Enter what you charged for the kit only, not your day rate.</p>`;
+  const foot=`${isNew?"<span></span>":delBtn("del-job",id)}<button class="btn primary" data-act="save-job" data-id="${esc(id||"")}">${isNew?"Log job":"Save"}</button>`;
+  openSheet(isNew?"Log a job":"Edit job",body,foot,()=>{
+    drawPick(); drawSum();
+    $("#j-q").addEventListener("input",drawPick);
+    $("#j-fee").addEventListener("input",drawSum);
+    $("#j-pick").addEventListener("change",e=>{const c=e.target.closest("input[data-id]");if(!c)return;c.checked?SH.sel.add(c.dataset.id):SH.sel.delete(c.dataset.id);c.closest("label").classList.toggle("on",c.checked);drawSum()});
+  });
+}
+function pickable(){return itemsSorted().filter(x=>x.status==="Owned"||x.status==="Check"||SH.sel.has(x.id))}
+function drawPick(){
+  const q=(val("j-q")||"").toLowerCase(); const xs=pickable().filter(x=>!q||(x.name+" "+x.code).toLowerCase().includes(q));
+  const cats=st().categories.slice(); xs.forEach(x=>{if(!cats.includes(x.category||"Other"))cats.push(x.category||"Other")});
+  $("#j-pick").innerHTML=xs.length?cats.map(c=>{const g=xs.filter(x=>(x.category||"Other")===c);if(!g.length)return"";
+    return `<div class="pick-g"><span>${esc(c)}</span><button data-act="pick-cat" data-c="${esc(c)}">${g.every(x=>SH.sel.has(x.id))?"Clear":"All"}</button></div>`+g.map(x=>`<label class="${SH.sel.has(x.id)?"on":""}"><input type="checkbox" data-id="${esc(x.id)}" ${SH.sel.has(x.id)?"checked":""}><span>${esc(x.name)}</span><small>${gbp(x.cost)}</small></label>`).join("")}).join(""):`<div class="empty">No kit to pick. Add items on the Kit tab first.</div>`;
+}
+function drawSum(){
+  const ids=[...SH.sel].filter(x=>C.it[x]&&C.it[x].status!=="Returned"); const fee=n(val("j-fee"));
+  const tot=ids.reduce((a,x)=>a+C.it[x].cost,0); const eq=st().split==="equal"||tot<=0;
+  const rows=ids.map(x=>({x:C.it[x],s:ids.length&&fee?(eq?fee/ids.length:fee*C.it[x].cost/tot):0})).sort((a,b)=>b.s-a.s);
+  $("#j-sum").innerHTML=ids.length?`<div class="summary"><span>${ids.length} item${ids.length>1?"s":""} · kit worth <span class="num">${gbp(tot)}</span></span><b class="num">${fee?pct(fee/(tot||1))+" of value":""}</b></div>
+   ${fee?`<div class="field" style="margin-top:10px"><label>How the ${gbp(fee)} is shared</label><div class="split">${rows.map(r=>`<div><span>${esc(r.x.name)}</span><span class="num">${gbp(r.s,2)}</span></div>`).join("")}</div></div>`:""}`:"";
+  const sp=$("#j-savepkg"); if(sp) sp.hidden=ids.length<2;
+}
+async function saveJob(id){
+  const d={client:val("j-client").trim(),date:val("j-date"),days:n(val("j-days"))||1,fee:Math.round(n(val("j-fee"))*100)/100,paid:$("#j-paid").checked,items:[...SH.sel]};
+  if(!d.items.length){toast("Tick at least one item");return}
+  try{ if(id) await S.db.collection("jobs").doc(id).set(d); else await S.db.collection("jobs").add(d); closeSheet(); toast(id?"Saved":"Job logged"); }catch(e){fail(e)}
+}
+
+function repairSheet(id){
+  const isNew=!id; const d=isNew?{date:today()}:S.repairs.get(id);
+  const xs=itemsSorted().filter(x=>x.status!=="Returned"||x.id===d.itemId);
+  const body=`
+    <div class="field"><label for="r-item">Item</label><select id="r-item">${xs.map(x=>`<option value="${esc(x.id)}" ${x.id===d.itemId?"selected":""}>${esc(x.code)} · ${esc(x.name)}</option>`).join("")}</select></div>
+    <div class="field"><label for="r-work">Work done</label><input id="r-work" value="${esc(d.work)}" placeholder="e.g. Sensor clean"></div>
+    <div class="three"><div class="field"><label for="r-date">Date</label><input id="r-date" type="date" value="${esc(d.date||"")}"></div>
+      <div class="field"><label for="r-cost">Cost (£)</label><input id="r-cost" inputmode="decimal" value="${d.cost??""}" placeholder="0.00"></div>
+      <div class="field"><label for="r-by">Done by</label><input id="r-by" value="${esc(d.by)}" placeholder="e.g. CVP"></div></div>`;
+  const foot=`${isNew?"<span></span>":delBtn("del-repair",id)}<button class="btn primary" data-act="save-repair" data-id="${esc(id||"")}">${isNew?"Add repair":"Save"}</button>`;
+  openSheet(isNew?"Log a repair":"Edit repair",body,foot);
+}
+async function saveRepair(id){
+  const d={itemId:val("r-item"),work:val("r-work").trim(),date:val("r-date"),cost:Math.round(n(val("r-cost"))*100)/100,by:val("r-by").trim()};
+  if(!d.itemId){toast("Pick an item");return}
+  try{ if(id) await S.db.collection("repairs").doc(id).set(d); else await S.db.collection("repairs").add(d); closeSheet(); toast("Saved"); }catch(e){fail(e)}
+}
+
+function pkgSheet(i){
+  const p=st().packages[i]; SH={sel:new Set(p.items||[])};
+  openSheet("Package: "+p.name,`<div class="pick" id="j-pick"></div><input id="j-q" type="hidden" value="">`,`<span></span><button class="btn primary" data-act="pkg-save" data-i="${i}">Save package</button>`,()=>{
+    drawPick();
+    $("#j-pick").addEventListener("change",e=>{const c=e.target.closest("input[data-id]");if(!c)return;c.checked?SH.sel.add(c.dataset.id):SH.sel.delete(c.dataset.id);c.closest("label").classList.toggle("on",c.checked)});
+  });
+}
+
+/* ---------- settings writes ---------- */
+let setBusy=Promise.resolve();
+function saveSettings(patch,msg){
+  const next=Object.assign({},st(),patch); S.settings=next; render();
+  setBusy=setBusy.then(()=>S.db.doc("settings/main").set(next)).then(()=>{msg&&toast(msg)}).catch(fail);
+  return setBusy;
+}
+async function renameCategory(i,name){
+  const s=st(); const old=s.categories[i]; name=name.trim(); if(!name||name===old)return;
+  if(s.categories.includes(name)){toast("That category already exists");render();return}
+  const cats=s.categories.slice(); cats[i]=name; await saveSettings({categories:cats},"Renamed");
+  for(const [id,d] of S.items){ if(d.category===old){ try{await S.db.collection("items").doc(id).set(Object.assign({},d,{category:name}))}catch(e){fail(e);break} } }
+}
+
+/* ---------- export ---------- */
+async function exportCsv(kind){
+  const q=v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  let rows;
+  if(kind==="kit"){
+    rows=[["ID","Item","Category","Serial","Supplier","Purchased","Cost","Status","Repairs","Total cost","Jobs","Rental income","Sold for / payout","Money back","Net","Notes"]]
+      .concat(itemsSorted().map(x=>[x.code,x.name,x.category,x.serial,x.supplier,x.purchased,x.cost.toFixed(2),x.status,x.rep.toFixed(2),x.total.toFixed(2),x.times,x.rental.toFixed(2),x.sale.toFixed(2),x.back.toFixed(2),x.net.toFixed(2),x.notes]));
+  } else {
+    rows=[["Date","Job / client","Days","Kit fee","Paid","Items"]].concat(C.jobs.map(j=>[j.date,j.client,j.days,j.fee.toFixed(2),j.paid===false?"No":"Yes",(j.items||[]).map(x=>C.it[x]?C.it[x].code+" "+C.it[x].name:"").filter(Boolean).join("; ")]));
+  }
+  const csv=rows.map(r=>r.map(q).join(",")).join("\n");
+  saveFile((kind==="kit"?"Kit register ":"Kit jobs ")+today()+".csv",csv,"text/csv")
+}
+
+function saveFile(name,text,type){const u=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+function backupJson(){const o={app:"kit-ledger",version:1,items:Object.fromEntries(S.items),jobs:Object.fromEntries(S.jobs),repairs:Object.fromEntries(S.repairs),settings:st()};saveFile("Kit Ledger backup "+today()+".json",JSON.stringify(o,null,1),"application/json")}
+async function importJson(file){
+  let o; try{o=JSON.parse(await file.text())}catch(_){toast("That file isn't a Kit Ledger backup");return}
+  if(!o||o.app!=="kit-ledger"){toast("That file isn't a Kit Ledger backup");return}
+  const writes=[];
+  for(const c of ["items","jobs","repairs"]) for(const [id,d] of Object.entries(o[c]||{})) writes.push([doc(FB.fs,"users",FB.uid,c,id),d]);
+  if(o.settings) writes.push([doc(FB.fs,"users",FB.uid,"settings","main"),o.settings]);
+  for(let i=0;i<writes.length;i+=400){const b=writeBatch(FB.fs);writes.slice(i,i+400).forEach(([r,d])=>b.set(r,d));b.commit().catch(fail)}
+  toast(`Imported ${Object.keys(o.items||{}).length} items`);
+}
+/* ---------- actions ---------- */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-act]"); if(!b)return; const a=b.dataset.act, id=b.dataset.id;
+  if(!S.canWrite&&/^(new|save|del|cat|pkg|split|accent)/.test(a)){toast("This view is read-only");return}
+  switch(a){
+    case "close":closeSheet();break;
+    case "new-item":itemSheet(null);break;
+    case "edit-item":itemSheet(id);break;
+    case "save-item":saveItem(id||null);break;
+    case "del-item":if(arm(b)){try{await S.db.collection("items").doc(id).delete();closeSheet();toast("Item deleted")}catch(err){fail(err)}}break;
+    case "new-job":jobSheet(null);break;
+    case "edit-job":jobSheet(id);break;
+    case "save-job":saveJob(id||null);break;
+    case "del-job":if(arm(b)){try{await S.db.collection("jobs").doc(id).delete();closeSheet();toast("Job deleted")}catch(err){fail(err)}}break;
+    case "new-repair":if(!S.items.size){toast("Add kit first");break}repairSheet(null);break;
+    case "edit-repair":repairSheet(id);break;
+    case "save-repair":saveRepair(id||null);break;
+    case "del-repair":if(arm(b)){try{await S.db.collection("repairs").doc(id).delete();closeSheet();toast("Repair deleted")}catch(err){fail(err)}}break;
+    case "kitf":S.kitFilter=b.dataset.f;render();break;
+    case "show-check":S.view="kit";S.kitFilter="Check";render();break;
+    case "pick-cat":{const c=b.dataset.c;const g=pickable().filter(x=>(x.category||"Other")===c);const all=g.every(x=>SH.sel.has(x.id));g.forEach(x=>all?SH.sel.delete(x.id):SH.sel.add(x.id));drawPick();if($("#j-sum"))drawSum();break}
+    case "pkg-apply":{const p=st().packages[+b.dataset.i];const ids=(p.items||[]).filter(x=>C.it[x]);const all=ids.every(x=>SH.sel.has(x));ids.forEach(x=>all?SH.sel.delete(x):SH.sel.add(x));drawPick();drawSum();break}
+    case "pkg-from-job":{const row=$("#j-savepkg");row.innerHTML=`<input id="pkgname" placeholder="Package name, e.g. PYXIS package" style="flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:9px 11px"><button class="btn" data-act="pkg-create">Save</button>`;$("#pkgname").focus();break}
+    case "pkg-create":{const nm=val("pkgname").trim();if(!nm){toast("Name the package");break}const pk=st().packages.concat([{name:nm,items:[...SH.sel]}]);await saveSettings({packages:pk},"Package saved");const row=$("#j-savepkg");if(row)row.innerHTML=`<span class="muted" style="font-size:13px">Saved as “${esc(nm)}”.</span>`;break}
+    case "pkg-new":{const pk=st().packages.concat([{name:"New package",items:[]}]);await saveSettings({packages:pk});pkgSheet(pk.length-1);break}
+    case "pkg-edit":pkgSheet(+b.dataset.i);break;
+    case "pkg-save":{const i=+b.dataset.i;const pk=st().packages.map((p,k)=>k===i?Object.assign({},p,{items:[...SH.sel]}):p);closeSheet();saveSettings({packages:pk},"Package saved");break}
+    case "pkg-del":{if(!arm(b))break;const pk=st().packages.filter((_,k)=>k!==+b.dataset.i);saveSettings({packages:pk},"Package deleted");break}
+    case "cat-add":{const nm=val("cat-new").trim();if(!nm)break;if(st().categories.includes(nm)){toast("Already there");break}saveSettings({categories:st().categories.concat([nm])},"Category added");break}
+    case "cat-del":{const cats=st().categories.filter((_,k)=>k!==+b.dataset.i);saveSettings({categories:cats},"Removed");break}
+    case "split":saveSettings({split:b.dataset.v},"Updated");break;
+    case "accent":saveSettings({accent:b.dataset.v});break;
+    case "export-kit":exportCsv("kit");break;
+    case "export-jobs":exportCsv("jobs");break;
+    case "backup":backupJson();break;
+    case "import":$("#importfile").click();break;
+    case "signout":signOut(FB.auth);break;
+  }
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.dataset.act==="cat-name")renameCategory(+t.dataset.i,t.value);
+  if(t.dataset.act==="pkg-name"){const nm=t.value.trim();if(!nm)return;const pk=st().packages.map((p,k)=>k===+t.dataset.i?Object.assign({},p,{name:nm}):p);saveSettings({packages:pk},"Renamed")}
+});
+
+/* ---------- boot ---------- */
+const FB={};
+function wrapQ(qs){return {docs:qs.docs.map(d=>({id:d.id,exists:true,data:()=>d.data()}))}}
+function docApi(r){return {id:r.id,set(d){setDoc(r,d).catch(fail);return Promise.resolve()},delete(){deleteDoc(r).catch(fail);return Promise.resolve()},onSnapshot(n,e){return onSnapshot(r,s=>n({exists:s.exists(),data:()=>s.data()}),e)}}}
+function makeDb(uid){
+  return {
+    collection(name){const ref=collection(FB.fs,"users",uid,name);return {onSnapshot(n,e){return onSnapshot(ref,q=>n(wrapQ(q)),e)},doc(id){return docApi(id?doc(ref,id):doc(ref))},add(d){const r=doc(ref);setDoc(r,d).catch(fail);return Promise.resolve(docApi(r))}}},
+    doc(path){const [c,i]=path.split("/");return docApi(doc(FB.fs,"users",uid,c,i))}
+  };
+}
+let unsubs=[];
+function signInView(){
+  S.db=null; $("#tabs").hidden=true;
+  $("#app").innerHTML=`<form class="card signin" id="signin"><h1>Kit Ledger</h1><p class="muted" style="margin:0">Sign in to see your kit.</p>
+    <div class="field"><label for="si-email">Email</label><input id="si-email" type="email" autocomplete="username" required></div>
+    <div class="field"><label for="si-pass">Password</label><input id="si-pass" type="password" autocomplete="current-password" required></div>
+    <p class="err" id="si-err"></p>
+    <button class="btn primary" type="submit" style="justify-content:center">Sign in</button>
+    <button class="btn ghost" type="button" id="si-reset">Forgot password</button></form>`;
+  $("#signin").addEventListener("submit",async e=>{e.preventDefault();$("#si-err").textContent="";
+    try{await signInWithEmailAndPassword(FB.auth,$("#si-email").value.trim(),$("#si-pass").value)}catch(err){$("#si-err").textContent="That email and password didn't match. Try again."}});
+  $("#si-reset").addEventListener("click",async()=>{const em=$("#si-email").value.trim();if(!em){$("#si-err").textContent="Enter your email first.";return}
+    try{await sendPasswordResetEmail(FB.auth,em);$("#si-err").textContent="Reset link sent. Check your email."}catch(_){$("#si-err").textContent="Couldn't send a reset link to that address."}});
+}
+function start(user){
+  unsubs.forEach(u=>u());unsubs=[];
+  FB.uid=user.uid; FB.email=user.email; $("#tabs").hidden=false;
+  S.items=new Map();S.jobs=new Map();S.repairs=new Map();S.settings=null;S.ready={items:false,jobs:false,repairs:false,settings:false};
+  const db=makeDb(user.uid); S.db=db;
+  const coll=(name)=>unsubs.push(db.collection(name).onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>m.set(d.id,d.data()));S[name]=m;S.ready[name]=true;if(!SH)render();else compute()},()=>{S.ready[name]=true;render()}));
+  coll("items");coll("jobs");coll("repairs");
+  unsubs.push(db.doc("settings/main").onSnapshot(s=>{S.settings=s.exists?s.data():null;S.ready.settings=true;if(!SH)render()},()=>{S.ready.settings=true;render()}));
+  render();
+}
+try{const v=localStorage.getItem("kl-view");if(v&&NAMES[v])S.view=v}catch(_){}
+if(!CONFIG||!CONFIG.apiKey||CONFIG.apiKey.startsWith("PASTE")){
+  $("#app").innerHTML=`<div class="card empty" style="margin-top:12vh"><b>Almost there</b>Add your Firebase settings to config.js to switch the app on.</div>`;
+}else{
+  const app=initializeApp(CONFIG);
+  FB.auth=getAuth(app);
+  FB.fs=initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
+  $("#importfile").addEventListener("change",e=>{const f=e.target.files[0];if(f)importJson(f);e.target.value=""});
+  onAuthStateChanged(FB.auth,u=>{if(u)start(u);else{unsubs.forEach(x=>x());unsubs=[];signInView()}});
+}
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+</body>
+</html>
