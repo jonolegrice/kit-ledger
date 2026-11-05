@@ -76,6 +76,13 @@ h2:first-child{margin-top:4px}
 .chip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
+.pkgbox{display:grid;gap:6px}
+.pkgbox .chips{flex-wrap:wrap}
+.pkglabel{font-size:12px;color:var(--muted)}
+.chip.pkg{padding:8px 13px;font-weight:600;border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.chip.pkg small{font-weight:500;opacity:.75;font-size:11.5px}
+.chip.pkg[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.chip.pkg[data-state="mixed"]{background:var(--surface)}
 .pill{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
 .pill.mute{background:var(--sunk);color:var(--muted)}
@@ -259,6 +266,17 @@ function renderTabs(){
 }
 document.addEventListener("click",e=>{const t=e.target.closest("[data-tab]");if(t){S.view=t.dataset.tab;try{localStorage.setItem("kl-view",S.view)}catch(_){}render();window.scrollTo(0,0)}});
 
+const STARTER=[
+  {name:"PYXIS camera package",items:["K01","K04","K05","K06","K08","K09","K10","K11","K12","K13","K14","K15","K16","K17","K18","K19","K22","K30"]},
+  {name:"Thypoch lens set",items:["K02","K03","K20","K21","K31","K32"]}
+];
+let starterTried=false;
+function maybeStarter(){
+  if(starterTried||!S.items.size||st().starterPackages)return; starterTried=true;
+  const have=new Set(st().packages.map(p=>String(p.name).toLowerCase()));
+  const add=STARTER.filter(p=>!have.has(p.name.toLowerCase())).map(p=>({name:p.name,items:p.items.filter(id=>S.items.has(id))})).filter(p=>p.items.length);
+  saveSettings({packages:st().packages.concat(add),starterPackages:true});
+}
 function render(){
   document.body.dataset.accent=st().accent||"teal";
   renderTabs();
@@ -266,6 +284,7 @@ function render(){
   if(!S.db){return}
   if(!Object.values(S.ready).every(Boolean)){app.innerHTML=head()+`<div class="state">Loading your kit…</div>`;return}
   compute();
+  if(!starterTried&&S.items.size&&!st().starterPackages){setTimeout(maybeStarter,0)}
   const v={overview:vOverview,kit:vKit,jobs:vJobs,repairs:vRepairs,settings:vSettings}[S.view]||vOverview;
   app.innerHTML=head()+v();
   if(S.view==="kit"){const q=$("#kitq");if(q){q.value=S.kitQ;q.addEventListener("input",()=>{S.kitQ=q.value;const l=$("#kitlist");if(l)l.innerHTML=kitList()})}}
@@ -429,7 +448,7 @@ function jobSheet(id,preset){
       <div class="field"><label for="j-fee">Kit fee (£)</label><input id="j-fee" inputmode="decimal" value="${d.fee??""}" placeholder="550"></div></div>
     <label class="toggle"><input type="checkbox" id="j-paid" ${d.paid===false?"":"checked"}> Paid</label>
     <div class="field"><label>What went out</label>
-      ${st().packages.length?`<div class="chips" id="j-pkgs">${st().packages.map((p,i)=>`<button class="chip" data-act="pkg-apply" data-i="${i}">${esc(p.name)}</button>`).join("")}</div>`:""}
+      ${st().packages.length?`<div class="pkgbox"><span class="pkglabel">Add a package</span><div class="chips" id="j-pkgs">${pkgChips()}</div></div>`:""}
       <input class="search" id="j-q" type="search" placeholder="Filter kit" aria-label="Filter kit">
       <div class="pick" id="j-pick"></div></div>
     <div id="j-sum"></div>
@@ -450,7 +469,13 @@ function drawPick(){
   $("#j-pick").innerHTML=xs.length?cats.map(c=>{const g=xs.filter(x=>(x.category||"Other")===c);if(!g.length)return"";
     return `<div class="pick-g"><span>${esc(c)}</span><button data-act="pick-cat" data-c="${esc(c)}">${g.every(x=>SH.sel.has(x.id))?"Clear":"All"}</button></div>`+g.map(x=>`<label class="${SH.sel.has(x.id)?"on":""}"><input type="checkbox" data-id="${esc(x.id)}" ${SH.sel.has(x.id)?"checked":""}><span>${esc(x.name)}</span><small>${gbp(x.cost)}</small></label>`).join("")}).join(""):`<div class="empty">No kit to pick. Add items on the Kit tab first.</div>`;
 }
+function pkgChips(){
+  return st().packages.map((p,i)=>{const ids=(p.items||[]).filter(x=>C.it[x]&&C.it[x].status!=="Returned");const on=ids.filter(x=>SH.sel.has(x)).length;
+    const state=!ids.length?"":on===ids.length?"true":on?"mixed":"false";
+    return `<button class="chip pkg" data-act="pkg-apply" data-i="${i}" aria-pressed="${state==="true"}" data-state="${state}">${state==="true"?"✓ ":""}${esc(p.name)}<small>${on&&on<ids.length?on+"/"+ids.length:ids.length+" items"}</small></button>`}).join("");
+}
 function drawSum(){
+  const pc=$("#j-pkgs"); if(pc) pc.innerHTML=pkgChips();
   const ids=[...SH.sel].filter(x=>C.it[x]&&C.it[x].status!=="Returned"); const fee=n(val("j-fee"));
   const tot=ids.reduce((a,x)=>a+C.it[x].cost,0); const eq=st().split==="equal"||tot<=0;
   const rows=ids.map(x=>({x:C.it[x],s:ids.length&&fee?(eq?fee/ids.length:fee*C.it[x].cost/tot):0})).sort((a,b)=>b.s-a.s);
