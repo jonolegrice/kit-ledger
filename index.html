@@ -164,6 +164,14 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surf
 .pick label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pick label small{font-family:var(--mono);color:var(--muted);font-size:12.5px}
 .pick label.on{background:var(--accent-soft)}
+.setrow{display:grid;grid-template-columns:minmax(0,1fr) 44px;border-top:1px solid var(--line)}
+.setrow>label{border-top:0}
+.setrow.on{background:var(--accent-soft)}
+.setrow b{font-weight:600}
+.setrow em,.pick em{font-style:normal;font-size:12px;color:var(--muted);margin-left:8px}
+.setrow .exp{border:0;border-left:1px solid var(--line);background:transparent;font-size:20px;color:var(--muted);cursor:pointer}
+.pick label.kid{padding-left:44px;background:var(--bg)}
+.pick label.kid.on{background:var(--accent-soft)}
 .summary{display:flex;justify-content:space-between;gap:10px;padding:11px 12px;background:var(--accent-soft);border-radius:10px;font-size:14px}
 .split{font-size:13px;display:grid;gap:4px;max-height:160px;overflow:auto}
 .split div{display:flex;justify-content:space-between;gap:10px}
@@ -171,9 +179,9 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surf
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
 .sw[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 3px var(--surface)}
-.set-row{display:flex;gap:8px;align-items:center;padding:8px 12px}
+.set-row{display:flex;gap:4px 8px;align-items:center;padding:8px 12px;flex-wrap:wrap}
 .set-row+.set-row{border-top:1px solid var(--line)}
-.set-row input{flex:1;min-width:0;border:1px solid transparent;background:transparent;border-radius:8px;padding:7px 8px}
+.set-row input{flex:1 1 170px;min-width:0;border:1px solid transparent;background:transparent;border-radius:8px;padding:7px 8px}
 .set-row input:hover,.set-row input:focus{border-color:var(--line);background:var(--bg)}
 .set-row small{color:var(--muted);font-size:12px;white-space:nowrap}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
@@ -201,7 +209,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 "use strict";
-const DEF={categories:["Camera","Lenses","Filters","Monitor","Media","Power","Cables","Rigging","Cases","Other"],packages:[],split:"cost",accent:"teal"};
+const DEF={categories:["Camera","Lenses","Filters","Monitor","Media","Power","Cables","Rigging","Cases","Other"],packages:[],sets:[],split:"cost",accent:"teal"};
 const STATUSES=["Owned","Check","Sold","Stolen","Returned"];
 const COUNTED=["Owned","Sold","Stolen"];
 const S={db:null,items:new Map(),jobs:new Map(),repairs:new Map(),settings:null,ready:{items:false,jobs:false,repairs:false,settings:false},view:"overview",kitFilter:"All",kitQ:"",canWrite:true};
@@ -247,7 +255,8 @@ function compute(){
   T.rental=jobs.reduce((a,j)=>a+j.fee,0);
   T.owed=jobs.filter(j=>j.paid===false).reduce((a,j)=>a+j.fee,0);
   T.pct=T.spent>0?T.back/T.spent:0;
-  C={it,jobs,T};
+  const setOf={}; (st().sets||[]).forEach(z=>(z.items||[]).forEach(x=>{if(!setOf[x])setOf[x]=z.name}));
+  C={it,jobs,T,setOf}; return;
 }
 function itemsSorted(){return Object.values(C.it).sort((a,b)=>(a.code||"").localeCompare(b.code||"",undefined,{numeric:true}))}
 function nextCode(){let m=0;for(const [,d] of S.items){const k=parseInt(String(d.code||"").replace(/\D/g,""),10);if(k>m)m=k}return "K"+String(m+1).padStart(2,"0")}
@@ -267,9 +276,24 @@ function renderTabs(){
 document.addEventListener("click",e=>{const t=e.target.closest("[data-tab]");if(t){S.view=t.dataset.tab;try{localStorage.setItem("kl-view",S.view)}catch(_){}render();window.scrollTo(0,0)}});
 
 const STARTER=[
-  {name:"PYXIS camera package",items:["K01","K04","K05","K06","K08","K09","K10","K11","K12","K13","K14","K15","K16","K17","K18","K19","K22","K30"]},
+  {name:"PYXIS camera package",items:["K01","K04","K05","K06","K07","K08","K09","K10","K11","K12","K13","K14","K15","K16","K17","K18","K19","K22","K29","K30"]},
   {name:"Thypoch lens set",items:["K02","K03","K20","K21","K31","K32"]}
 ];
+const STARTER_SETS=[
+  {name:"Media kit",items:["K05","K06","K07","K29"]},
+  {name:"Monitor kit",items:["K04","K30","K08"]},
+  {name:"Thypoch lens kit",items:["K02","K03","K31","K21","K20","K32"]}
+];
+let setsTried=false;
+function maybeSets(){
+  if(setsTried||!S.items.size||st().starterSets)return; setsTried=true;
+  const s=st(); const have=new Set((s.sets||[]).map(z=>String(z.name).toLowerCase()));
+  const sets=(s.sets||[]).concat(STARTER_SETS.filter(z=>!have.has(z.name.toLowerCase())).map(z=>({name:z.name,items:z.items.filter(id=>S.items.has(id))})));
+  let pk=(s.packages||[]).map(p=>p.name==="PYXIS camera package"?Object.assign({},p,{items:[...new Set((p.items||[]).concat(["K07","K29"].filter(id=>S.items.has(id))))]}):p);
+  const lensStarter=["K02","K03","K20","K21","K31","K32"].join();
+  pk=pk.filter(p=>!(p.name==="Thypoch lens set"&&(p.items||[]).slice().sort().join()===lensStarter));
+  saveSettings({sets,packages:pk,starterSets:true});
+}
 let starterTried=false;
 function maybeStarter(){
   if(starterTried||!S.items.size||st().starterPackages)return; starterTried=true;
@@ -285,6 +309,7 @@ function render(){
   if(!Object.values(S.ready).every(Boolean)){app.innerHTML=head()+`<div class="state">Loading your kit…</div>`;return}
   compute();
   if(!starterTried&&S.items.size&&!st().starterPackages){setTimeout(maybeStarter,0)}
+  else if(!setsTried&&S.items.size&&st().starterPackages&&!st().starterSets){setTimeout(maybeSets,0)}
   const v={overview:vOverview,kit:vKit,jobs:vJobs,repairs:vRepairs,settings:vSettings}[S.view]||vOverview;
   app.innerHTML=head()+v();
   if(S.view==="kit"){const q=$("#kitq");if(q){q.value=S.kitQ;q.addEventListener("input",()=>{S.kitQ=q.value;const l=$("#kitlist");if(l)l.innerHTML=kitList()})}}
@@ -324,7 +349,7 @@ function vOverview(){
 function itemRow(x){
   const chip=x.status!=="Owned"?`<span class="pill ${x.status==="Check"?"warn":"mute"}">${esc(x.status)}</span>`:"";
   return `<button class="row" data-act="edit-item" data-id="${esc(x.id)}">
-    <div><div class="t">${esc(x.name)}</div><div class="m"><span class="mono">${esc(x.code||"")}</span>${chip}${x.times?`<span>${x.times} job${x.times>1?"s":""}</span>`:""}</div></div>
+    <div><div class="t">${esc(x.name)}</div><div class="m"><span class="mono">${esc(x.code||"")}</span>${chip}${C.setOf&&C.setOf[x.id]?`<span class="pill mute">${esc(C.setOf[x.id])}</span>`:""}${x.times?`<span>${x.times} job${x.times>1?"s":""}</span>`:""}</div></div>
     <div class="r">${gbp(x.total)}<small>${x.back>0?pct(x.pct)+" back":"—"}</small></div>
     ${x.counted||x.status==="Check"?`<div class="bar ${x.pct>=1?"done":""}"><i style="width:${Math.min(100,x.pct*100)}%"></i></div>`:""}
   </button>`;
@@ -371,8 +396,12 @@ function vSettings(){
   <div class="card">${s.categories.map((c,i)=>`<div class="set-row"><input id="cat-${i}" value="${esc(c)}" data-act="cat-name" data-i="${i}" aria-label="Category name"><small>${used(c)} item${used(c)===1?"":"s"}</small>${used(c)?"":`<button class="btn ghost danger" data-act="cat-del" data-i="${i}" aria-label="Remove ${esc(c)}">Remove</button>`}</div>`).join("")}
     <div class="set-row"><input id="cat-new" placeholder="New category" aria-label="New category"><button class="btn" data-act="cat-add">Add</button></div></div>
   <p class="muted" style="font-size:12.5px">Renaming a category moves its items with it. Only empty categories can be removed.</p>
+  <h2>Sets</h2>
+  <div class="card">${(s.sets||[]).length?s.sets.map((z,i)=>`<div class="set-row"><input id="set-${i}" value="${esc(z.name)}" data-act="set-name" data-i="${i}" aria-label="Set name"><small>${(z.items||[]).length} items</small><button class="btn ghost" data-act="set-edit" data-i="${i}">Edit</button><button class="btn ghost danger" data-act="set-del" data-i="${i}">Delete</button></div>`).join(""):`<div class="empty" style="padding:18px">A set is kit that always travels together, like your cards, reader and case. It shows as one tick in Log a job, and you can open it to untick a single piece.</div>`}
+    <div class="set-row"><button class="btn" data-act="set-new">+ New set</button></div></div>
+  <p class="muted" style="font-size:12.5px">Sets are the small groups that never get split up. Packages (below) are the bigger combinations you hire out, and can include whole sets.</p>
   <h2>Kit packages</h2>
-  <div class="card">${s.packages.length?s.packages.map((p,i)=>`<div class="set-row"><input id="pkg-${i}" value="${esc(p.name)}" data-act="pkg-name" data-i="${i}" aria-label="Package name"><small>${(p.items||[]).length} items</small><button class="btn ghost" data-act="pkg-edit" data-i="${i}">Edit items</button><button class="btn ghost danger" data-act="pkg-del" data-i="${i}">Delete</button></div>`).join(""):`<div class="empty" style="padding:18px">Save a set of kit you often send out together (say, your PYXIS package) from the <b>Log job</b> screen. It becomes a one-tap selection.</div>`}
+  <div class="card">${s.packages.length?s.packages.map((p,i)=>`<div class="set-row"><input id="pkg-${i}" value="${esc(p.name)}" data-act="pkg-name" data-i="${i}" aria-label="Package name"><small>${(p.items||[]).length} items</small><button class="btn ghost" data-act="pkg-edit" data-i="${i}">Edit</button><button class="btn ghost danger" data-act="pkg-del" data-i="${i}">Delete</button></div>`).join(""):`<div class="empty" style="padding:18px">Save a set of kit you often send out together (say, your PYXIS package) from the <b>Log job</b> screen. It becomes a one-tap selection.</div>`}
     <div class="set-row"><button class="btn" data-act="pkg-new">+ New package</button></div></div>
   <h2>How fees are shared</h2>
   <div class="card" style="padding:14px;display:grid;gap:10px">
@@ -459,15 +488,38 @@ function jobSheet(id,preset){
     drawPick(); drawSum();
     $("#j-q").addEventListener("input",drawPick);
     $("#j-fee").addEventListener("input",drawSum);
-    $("#j-pick").addEventListener("change",e=>{const c=e.target.closest("input[data-id]");if(!c)return;c.checked?SH.sel.add(c.dataset.id):SH.sel.delete(c.dataset.id);c.closest("label").classList.toggle("on",c.checked);drawSum()});
+    $("#j-pick").addEventListener("change",pickChange);
   });
 }
 function pickable(){return itemsSorted().filter(x=>x.status==="Owned"||x.status==="Check"||SH.sel.has(x.id))}
 function drawPick(){
-  const q=(val("j-q")||"").toLowerCase(); const xs=pickable().filter(x=>!q||(x.name+" "+x.code).toLowerCase().includes(q));
+  const q=(val("j-q")||"").toLowerCase(); const match=x=>!q||(x.name+" "+x.code).toLowerCase().includes(q);
+  const all=pickable(); const sets=(st().sets||[]); const inSet=new Set();
+  const editingSet=SH.mode==="set";
+  let html="";
+  if(!editingSet){
+    const rows=sets.map((z,si)=>{const kids=(z.items||[]).map(id=>C.it[id]).filter(x=>x&&all.includes(x));kids.forEach(x=>inSet.add(x.id));
+      const shown=kids.filter(match); if(!kids.length||(q&&!shown.length&&!z.name.toLowerCase().includes(q)))return"";
+      const on=kids.filter(x=>SH.sel.has(x.id)).length; const open=SH.open&&SH.open.has(si)||!!q;
+      const cost=kids.reduce((a,x)=>a+x.cost,0);
+      return `<div class="setrow ${on?"on":""}"><label><input type="checkbox" data-set="${si}" ${on===kids.length?"checked":""} ${on&&on<kids.length?'data-mixed="1"':""}><span><b>${esc(z.name)}</b><em>${on&&on<kids.length?on+" of "+kids.length:kids.length} items</em></span><small>${gbp(cost)}</small></label><button class="exp" data-act="set-open" data-s="${si}" aria-expanded="${open}" aria-label="Show items in ${esc(z.name)}">${open?"−":"+"}</button></div>`+
+        (open?(q?shown:kids).map(x=>`<label class="kid ${SH.sel.has(x.id)?"on":""}"><input type="checkbox" data-id="${esc(x.id)}" ${SH.sel.has(x.id)?"checked":""}><span>${esc(x.name)}</span><small>${gbp(x.cost)}</small></label>`).join(""):"")}).join("");
+    if(rows) html+=`<div class="pick-g"><span>Sets</span></div>`+rows;
+  }
+  const xs=all.filter(x=>!inSet.has(x.id)&&match(x));
   const cats=st().categories.slice(); xs.forEach(x=>{if(!cats.includes(x.category||"Other"))cats.push(x.category||"Other")});
-  $("#j-pick").innerHTML=xs.length?cats.map(c=>{const g=xs.filter(x=>(x.category||"Other")===c);if(!g.length)return"";
-    return `<div class="pick-g"><span>${esc(c)}</span><button data-act="pick-cat" data-c="${esc(c)}">${g.every(x=>SH.sel.has(x.id))?"Clear":"All"}</button></div>`+g.map(x=>`<label class="${SH.sel.has(x.id)?"on":""}"><input type="checkbox" data-id="${esc(x.id)}" ${SH.sel.has(x.id)?"checked":""}><span>${esc(x.name)}</span><small>${gbp(x.cost)}</small></label>`).join("")}).join(""):`<div class="empty">No kit to pick. Add items on the Kit tab first.</div>`;
+  html+=cats.map(c=>{const g=xs.filter(x=>(x.category||"Other")===c);if(!g.length)return"";
+    return `<div class="pick-g"><span>${esc(c)}</span><button data-act="pick-cat" data-c="${esc(c)}">${g.every(x=>SH.sel.has(x.id))?"Clear":"All"}</button></div>`+g.map(x=>{const other=editingSet&&C.setOf[x.id]&&C.setOf[x.id]!==SH.setName?C.setOf[x.id]:"";
+      return `<label class="${SH.sel.has(x.id)?"on":""}"><input type="checkbox" data-id="${esc(x.id)}" ${SH.sel.has(x.id)?"checked":""}><span>${esc(x.name)}${other?` <em class="muted">· in ${esc(other)}</em>`:""}</span><small>${gbp(x.cost)}</small></label>`}).join("")}).join("");
+  $("#j-pick").innerHTML=html||`<div class="empty">${S.items.size?"Nothing matches.":"No kit to pick. Add items on the Kit tab first."}</div>`;
+  $("#j-pick").querySelectorAll('input[data-mixed="1"]').forEach(i=>i.indeterminate=true);
+}
+function pickChange(e){
+  const t=e.target; if(!(t instanceof HTMLInputElement))return;
+  if(t.dataset.set!==undefined){const z=st().sets[+t.dataset.set];const kids=(z.items||[]).filter(id=>C.it[id]&&pickable().some(x=>x.id===id));const allOn=kids.every(id=>SH.sel.has(id));kids.forEach(id=>allOn?SH.sel.delete(id):SH.sel.add(id))}
+  else if(t.dataset.id){t.checked?SH.sel.add(t.dataset.id):SH.sel.delete(t.dataset.id)}
+  else return;
+  drawPick(); if($("#j-sum"))drawSum();
 }
 function pkgChips(){
   return st().packages.map((p,i)=>{const ids=(p.items||[]).filter(x=>C.it[x]&&C.it[x].status!=="Returned");const on=ids.filter(x=>SH.sel.has(x)).length;
@@ -511,7 +563,14 @@ function pkgSheet(i){
   const p=st().packages[i]; SH={sel:new Set(p.items||[])};
   openSheet("Package: "+p.name,`<div class="pick" id="j-pick"></div><input id="j-q" type="hidden" value="">`,`<span></span><button class="btn primary" data-act="pkg-save" data-i="${i}">Save package</button>`,()=>{
     drawPick();
-    $("#j-pick").addEventListener("change",e=>{const c=e.target.closest("input[data-id]");if(!c)return;c.checked?SH.sel.add(c.dataset.id):SH.sel.delete(c.dataset.id);c.closest("label").classList.toggle("on",c.checked)});
+    $("#j-pick").addEventListener("change",pickChange);
+  });
+}
+
+function setSheet(i){
+  const z=st().sets[i]; SH={sel:new Set(z.items||[]),mode:"set",setName:z.name};
+  openSheet("Set: "+z.name,`<p class="muted" style="margin:0;font-size:13.5px">Tick everything that always travels together. An item can only be in one set, so ticking one from another set moves it here.</p><input class="search" id="j-q" type="search" placeholder="Filter kit" aria-label="Filter kit"><div class="pick" id="j-pick"></div>`,`<span></span><button class="btn primary" data-act="set-save" data-i="${i}">Save set</button>`,()=>{
+    drawPick(); $("#j-q").addEventListener("input",drawPick); $("#j-pick").addEventListener("change",pickChange);
   });
 }
 
@@ -580,6 +639,11 @@ document.addEventListener("click",async e=>{
     case "pkg-create":{const nm=val("pkgname").trim();if(!nm){toast("Name the package");break}const pk=st().packages.concat([{name:nm,items:[...SH.sel]}]);await saveSettings({packages:pk},"Package saved");const row=$("#j-savepkg");if(row)row.innerHTML=`<span class="muted" style="font-size:13px">Saved as “${esc(nm)}”.</span>`;break}
     case "pkg-new":{const pk=st().packages.concat([{name:"New package",items:[]}]);await saveSettings({packages:pk});pkgSheet(pk.length-1);break}
     case "pkg-edit":pkgSheet(+b.dataset.i);break;
+    case "set-open":{const k=+b.dataset.s;SH.open=SH.open||new Set();SH.open.has(k)?SH.open.delete(k):SH.open.add(k);drawPick();break}
+    case "set-new":{const zs=(st().sets||[]).concat([{name:"New set",items:[]}]);await saveSettings({sets:zs});setSheet(zs.length-1);break}
+    case "set-edit":setSheet(+b.dataset.i);break;
+    case "set-save":{const i=+b.dataset.i;const mine=[...SH.sel];const zs=(st().sets||[]).map((z,k)=>k===i?Object.assign({},z,{items:mine}):Object.assign({},z,{items:(z.items||[]).filter(x=>!SH.sel.has(x))}));closeSheet();saveSettings({sets:zs},"Set saved");break}
+    case "set-del":{if(!arm(b))break;const zs=(st().sets||[]).filter((_,k)=>k!==+b.dataset.i);saveSettings({sets:zs},"Set deleted");break}
     case "pkg-save":{const i=+b.dataset.i;const pk=st().packages.map((p,k)=>k===i?Object.assign({},p,{items:[...SH.sel]}):p);closeSheet();saveSettings({packages:pk},"Package saved");break}
     case "pkg-del":{if(!arm(b))break;const pk=st().packages.filter((_,k)=>k!==+b.dataset.i);saveSettings({packages:pk},"Package deleted");break}
     case "cat-add":{const nm=val("cat-new").trim();if(!nm)break;if(st().categories.includes(nm)){toast("Already there");break}saveSettings({categories:st().categories.concat([nm])},"Category added");break}
@@ -596,6 +660,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("change",e=>{
   const t=e.target;
   if(t.dataset.act==="cat-name")renameCategory(+t.dataset.i,t.value);
+  if(t.dataset.act==="set-name"){const nm=t.value.trim();if(!nm)return;const zs=(st().sets||[]).map((z,k)=>k===+t.dataset.i?Object.assign({},z,{name:nm}):z);saveSettings({sets:zs},"Renamed")}
   if(t.dataset.act==="pkg-name"){const nm=t.value.trim();if(!nm)return;const pk=st().packages.map((p,k)=>k===+t.dataset.i?Object.assign({},p,{name:nm}):p);saveSettings({packages:pk},"Renamed")}
 });
 
